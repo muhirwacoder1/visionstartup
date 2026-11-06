@@ -1,0 +1,10 @@
+{
+  "name": "nixtio-design-recreation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Responsive reference recreation of Nixtio with an independent browser interaction layer.",
+  "scripts": {
+    "dev": "python3 -m http.server 5186 --bind 127.0.0.1 --directory dist",
+    "check": "node --check dist/recreation.js"
+  }
+}

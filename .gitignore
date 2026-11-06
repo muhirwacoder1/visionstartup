@@ -1,0 +1,4 @@
+.reference-cache/
+.DS_Store
+*.tar.gz
+.openai/local/
