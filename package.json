@@ -4,7 +4,28 @@
   "private": true,
   "description": "Responsive reference recreation of Nixtio with an independent browser interaction layer.",
   "scripts": {
-    "dev": "python3 -m http.server 5186 --bind 127.0.0.1 --directory dist",
-    "check": "node --check dist/recreation.js"
+    "dev": "npm run build:cms && python3 -m http.server 5186 --bind 127.0.0.1 --directory dist",
+    "check": "node --check dist/recreation.js && node --check cms/public.js && npm run build:cms && tsc -p convex",
+    "build:cms": "node tools/build-cms.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@aws-sdk/s3-request-presigner": "^3.1169.0",
+    "@clerk/react": "^6.18.6",
+    "convex": "^1.49.0",
+    "convex-helpers": "^0.1.134",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "convex-test": "^0.0.71",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

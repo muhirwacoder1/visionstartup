@@ -43,6 +43,7 @@
     const start = performance.now();
     function tick(now) {
       const t = reduced ? 1 : Math.min((now - start) / 1300, 1);
+      if (el.hasAttribute('data-cms-count-edited')) return;
       if (text) text.textContent = Math.round(target * (1 - Math.pow(1 - t, 3))) + ' ';
       if (t < 1) requestAnimationFrame(tick);
     }

@@ -66,3 +66,15 @@ form [aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -3
   *,*::before,*::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   html.motion-ready [data-aos] { opacity: 1; transform: none; }
 }
+
+/* Content studio: existing layout rules still determine the public design. */
+[data-cms-hidden]{display:none!important}
+[data-cms-section]{scroll-margin-top:100px}
+.cms-case{max-width:1440px;margin:auto;padding:12rem max(5vw,1.5rem) 8rem;font-family:inherit;color:inherit}
+.cms-case h1{font:inherit;font-size:clamp(3.5rem,9vw,9.25rem);line-height:.95;letter-spacing:-.065em;margin:.15em 0 .32em}
+.cms-case-kicker{font-size:.85rem;letter-spacing:.16em;font-weight:600;text-transform:uppercase}
+.cms-case-summary,.cms-case-block p{max-width:68ch;font-size:clamp(1rem,2.1vw,1.65rem);line-height:1.5;white-space:pre-line}
+.cms-case img,.cms-case video{width:100%;height:auto;display:block;border-radius:clamp(1rem,3vw,2.25rem);margin-top:3rem}
+.cms-case-block{margin:clamp(4rem,10vw,10rem) 0}
+.cms-case-block h2{font-size:clamp(2.1rem,5vw,5rem);font-weight:500;line-height:1.02;letter-spacing:-.055em;margin-bottom:.45em}
+.cms-case-back{display:inline-flex;border:1px solid currentColor;border-radius:999px;padding:1rem 1.65rem;margin-top:2rem}

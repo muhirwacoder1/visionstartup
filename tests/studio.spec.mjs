@@ -1,0 +1,52 @@
+import {test,expect} from '@playwright/test';
+const origin='http://127.0.0.1:5186';
+test('edits a live preview, saves a local draft, and keeps it off the public page',async({page})=>{
+  await page.goto(origin+'/admin/?preview=local');
+  await expect(page.getByRole('heading',{name:'Page content'})).toBeVisible();
+  const frame=page.frameLocator('iframe');
+  const hero=page.getByRole('textbox',{name:/We create digital brands/}).first();
+  await hero.fill('We build brands for better things.');
+  await expect(frame.getByRole('heading',{name:/We build brands for better things/})).toBeVisible();
+  await page.getByRole('button',{name:'Mobile preview'}).click();
+  await expect(page.locator('iframe')).toHaveCSS('width','390px');
+  await expect(page.getByRole('button',{name:'Publish',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'Save draft'}).click();
+  await expect(page.getByRole('status')).toContainText('Draft saved');
+  await page.reload();
+  await expect(frame.getByRole('heading',{name:/We build brands for better things/})).toBeVisible();
+  const live=await page.context().newPage();
+  await live.goto(origin);
+  await expect(live.getByRole('heading',{name:/We create digital brands/})).toBeVisible();
+});
+test('previews menus, project covers, cards and blocks in the actual pages',async({page})=>{
+  await page.goto(origin+'/admin/?preview=local');
+  const frame=page.frameLocator('iframe');
+  await page.getByRole('button',{name:'Site menu',exact:true}).click();
+  await page.getByRole('button',{name:'Move Studio up'}).click();
+  const nav=frame.locator('header nav').first();
+  await expect(nav.getByRole('link').first()).toHaveText('Studio');
+  await page.getByRole('checkbox',{name:'Show in menu'}).first().uncheck();
+  await expect(nav.getByRole('link',{name:'Studio',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Projects',exact:true}).click();
+  await page.getByRole('button',{name:'New project'}).click();
+  await page.getByLabel('Project title').fill('Field Notes');
+  await page.getByLabel('Summary').fill('A fresh look at a product.');
+  await page.locator('input[type=file]').first().setInputFiles({
+    name:'cover.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jR9sAAAAASUVORK5CYII=','base64'),
+  });
+  await expect(frame.getByRole('heading',{name:'Field Notes',exact:true})).toBeVisible();
+  await page.getByLabel('Cover image description').fill('Project cover');
+  await page.getByRole('button',{name:'Add content block'}).click();
+  await page.getByLabel('Heading',{exact:true}).fill('The brief');
+  await expect(frame.getByRole('heading',{name:'The brief',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Project card',exact:true}).click();
+  await expect(frame.locator('[data-cms-project-card]')).toContainText('Field Notes');
+  await expect(frame.locator('[data-cms-project-card] img')).toHaveAttribute('src',/^blob:/);
+  await frame.locator('[data-cms-project-card]').click();
+  await expect(frame.getByRole('heading',{name:'Field Notes',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Save draft'}).click();
+  await expect(page.getByRole('status')).toContainText('Draft saved');
+  await page.getByRole('button',{name:'Delete draft',exact:true}).click();
+  await page.getByRole('alertdialog').getByRole('button',{name:'Delete draft'}).click();
+  await expect(page.getByRole('status')).toContainText('Draft removed');
+});

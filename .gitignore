@@ -2,3 +2,11 @@
 .DS_Store
 *.tar.gz
 .openai/local/
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/cms-config.js
+playwright-report/
+test-results/
+.clerk/
