@@ -76,11 +76,13 @@
   }));
 
   // The project images reveal a second art direction from the pointer position.
-  $$('a:has(.project-hover-image)').forEach(card => card.addEventListener('pointerenter', e => {
+  document.addEventListener('pointerover', e => {
+    const card = e.target.closest?.('a:has(.project-hover-image)');
+    if (!card || card.contains(e.relatedTarget) || e.pointerType === 'touch') return;
     const bounds = card.getBoundingClientRect();
     card.style.setProperty('--pointer-x', ((e.clientX - bounds.left) / bounds.width * 100) + '%');
     card.style.setProperty('--pointer-y', ((e.clientY - bounds.top) / bounds.height * 100) + '%');
-  }));
+  });
 
   // Service panels expand with content height rather than a fixed desktop size.
   const services = $$('[class*="accordion-item"][class*="__item"]');

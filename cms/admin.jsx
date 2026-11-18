@@ -14,7 +14,7 @@ const defaults = [
 ];
 const blankPage = {fields:{}, hidden:[]};
 const empty = {pages:[], menu:null, projects:[]};
-const blankProject = () => ({title:'', category:'', year:'', summary:'', cover:'', coverAlt:'', featured:true, sections:[]});
+const blankProject = () => ({title:'', category:'', year:'', summary:'', cover:'', coverAlt:'', hoverImage:'', featured:true, sections:[]});
 const slugify = s => s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,64).replace(/-$/,'');
 const getLocal = () => { try { return JSON.parse(localStorage.getItem('nixtio-editor-drafts-v1')) || empty; } catch { return empty; } };
 const message = e => typeof e.data === 'string' ? e.data : e.message?.split('\n')[0] || 'Something went wrong.';
@@ -109,6 +109,7 @@ function AssetField({label,value,onChange,kind='media',assets,upload,notify,embe
           const file=e.target.files?.[0]; e.target.value=''; if(!file)return;
           const valid = /^(image\/(jpeg|png|webp|avif)|video\/(mp4|webm|quicktime))$/.test(file.type);
           const limit = file.type.startsWith('image/') ? 10 : 50;
+          if (kind === 'image' && !file.type.startsWith('image/')) { notify('Choose a JPG, PNG, WebP, or AVIF image.',true); return; }
           if (!valid || !file.size || file.size > limit*1024*1024) { notify('Choose an image up to 10 MB or a video up to 50 MB.',true); return; }
           setBusy(true);
           try { const a=await upload(file); onChange(a.url); notify('Media added to this draft.'); }
@@ -209,9 +210,18 @@ function Studio({data,assets,actions,remote=false}) {
     if (value===field.value) delete fields[field.id]; else fields[field.id]=value;
     setPageWork({...pageWork,[route]:{value:{...pageEdit,fields},revision:pageWork[route]?.revision ?? pageRow?.revision ?? 0}});
   };
-  const updateProject = value => setProjectWork({...projectWork,[selected]:{value,revision:projectWork[selected]?.revision ?? projRow?.revision ?? 0}});
+  const updateProject = patch => setProjectWork(previous => {
+    const editingProject = previous[selected];
+    return {
+      ...previous,
+      [selected]: {
+        value: {...(editingProject?.value ?? projRow?.draft ?? blankProject()), ...patch},
+        revision: editingProject?.revision ?? projRow?.revision ?? 0,
+      },
+    };
+  });
   const updateMenu = value => setMenuWork({value,revision:menuWork?.revision ?? data.menu?.revision ?? 0});
-  const updateBlock = (i,patch) => updateProject({...projEdit,sections:projEdit.sections.map((s,index)=>index===i?{...s,...patch}:s)});
+  const updateBlock = (i,patch) => updateProject({sections:projEdit.sections.map((s,index)=>index===i?{...s,...patch}:s)});
   const uploadProps = {assets,upload:actions.upload,notify};
   const reset = () => {
     if (tab==='menu') setMenuWork(null);
@@ -314,26 +324,28 @@ function Studio({data,assets,actions,remote=false}) {
               </div>
               {!projEdit && <div className="fields"><h2>Your case studies</h2><p className="hint">Add a project to preview its cover, project card, and detail page. Existing reference case studies can be edited under Pages.</p></div>}
               {projEdit && <div className="fields">
-                <label className="field">Project title<input maxLength={100} value={projEdit.title} onChange={e=>updateProject({...projEdit,title:e.target.value})}/></label>
+                <label className="field">Project title<input maxLength={100} value={projEdit.title} onChange={e=>updateProject({title:e.target.value})}/></label>
                 <label className="field">Project URL<input value={selected==='~new'?newSlug || slugify(projEdit.title):selected} readOnly={selected!=='~new'} onChange={e=>setNewSlug(slugify(e.target.value))}/></label>
                 <p className="hint">The project URL stays fixed after the first save so links keep working.</p>
-                <div className="pair"><label className="field">Category<input value={projEdit.category} onChange={e=>updateProject({...projEdit,category:e.target.value})}/></label>
-                <label className="field">Year<input value={projEdit.year} onChange={e=>updateProject({...projEdit,year:e.target.value})}/></label></div>
-                <label className="field">Summary<textarea rows={4} value={projEdit.summary} onChange={e=>updateProject({...projEdit,summary:e.target.value})}/></label>
-                <AssetField {...uploadProps} label="Cover image" value={projEdit.cover} kind="image" onChange={v=>updateProject({...projEdit,cover:v})}/>
-                <label className="field">Cover image description<input value={projEdit.coverAlt} onChange={e=>updateProject({...projEdit,coverAlt:e.target.value})}/></label>
-                <label className="check"><input type="checkbox" checked={projEdit.featured} onChange={e=>updateProject({...projEdit,featured:e.target.checked})}/> Feature on the homepage</label>
+                <div className="pair"><label className="field">Category<input value={projEdit.category} onChange={e=>updateProject({category:e.target.value})}/></label>
+                <label className="field">Year<input value={projEdit.year} onChange={e=>updateProject({year:e.target.value})}/></label></div>
+                <label className="field">Summary<textarea rows={4} value={projEdit.summary} onChange={e=>updateProject({summary:e.target.value})}/></label>
+                <AssetField {...uploadProps} label="Cover image" value={projEdit.cover} kind="image" onChange={v=>updateProject({cover:v})}/>
+                <label className="field">Cover image description<input value={projEdit.coverAlt} onChange={e=>updateProject({coverAlt:e.target.value})}/></label>
+                <AssetField {...uploadProps} label="Hover image (optional)" value={projEdit.hoverImage ?? ''} kind="image" onChange={hoverImage=>updateProject({hoverImage})}/>
+                <p className="hint">Choose Project card below, then hover over the card to preview the reveal. Use the same crop as the cover.</p>
+                <label className="check"><input type="checkbox" checked={projEdit.featured} onChange={e=>updateProject({featured:e.target.checked})}/> Feature on the homepage</label>
                 <div className="inline"><button className="button small" onClick={()=>setPreviewPath('')}>Detail preview</button><button className="button small" onClick={()=>setPreviewPath('/cases/')}>Project card</button>{projEdit.featured && <button className="button small" onClick={()=>setPreviewPath('/')}>Homepage</button>}</div>
                 <h2>Case study content</h2>
                 {projEdit.sections.map((s,i)=><div className="block" key={i}><div className="section-head"><strong>Block {i+1}</strong><div className="inline">
-                  <button className="button small" aria-label={'Move block '+(i+1)+' up'} disabled={!i} onClick={()=>updateProject({...projEdit,sections:projEdit.sections.map((x,j)=>j===i?projEdit.sections[i-1]:j===i-1?s:x)})}>↑</button>
-                  <button className="text-button danger" onClick={()=>updateProject({...projEdit,sections:projEdit.sections.filter((_,j)=>j!==i)})}>Remove block</button></div></div>
+                  <button className="button small" aria-label={'Move block '+(i+1)+' up'} disabled={!i} onClick={()=>updateProject({sections:projEdit.sections.map((x,j)=>j===i?projEdit.sections[i-1]:j===i-1?s:x)})}>↑</button>
+                  <button className="text-button danger" onClick={()=>updateProject({sections:projEdit.sections.filter((_,j)=>j!==i)})}>Remove block</button></div></div>
                   <label className="field">Heading<input value={s.title} onChange={e=>updateBlock(i,{title:e.target.value})}/></label>
                   <label className="field">Body<textarea rows={4} value={s.body} onChange={e=>updateBlock(i,{body:e.target.value})}/></label>
                   <AssetField {...uploadProps} label="Block media" value={s.media} onChange={v=>updateBlock(i,{media:v})}/>
                   <label className="field">Media description<input value={s.alt} onChange={e=>updateBlock(i,{alt:e.target.value})}/></label>
                 </div>)}
-                <button className="button" disabled={projEdit.sections.length>=20} onClick={()=>updateProject({...projEdit,sections:[...projEdit.sections,{title:'',body:'',media:'',alt:''}]})}><Icon name="plus" size={16}/> Add content block</button>
+                <button className="button" disabled={projEdit.sections.length>=20} onClick={()=>updateProject({sections:[...projEdit.sections,{title:'',body:'',media:'',alt:''}]})}><Icon name="plus" size={16}/> Add content block</button>
                 {projRow && <div className="removal"><h3>{projRow.live?'Remove from the website':'Delete the project draft'}</h3>
                   <p className="hint">{projRow.live?'Unpublishing hides the case study and removes its cards. The draft remains editable.':'Deleting removes this saved draft. Its media stays in the library.'}</p>
                   <button className="button danger" disabled={saving} onClick={()=>setConfirm(projRow.live?'unpublish':'delete')}>{projRow.live?'Unpublish project':'Delete draft'}</button>

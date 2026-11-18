@@ -59,4 +59,22 @@ describe('CMS publication', () => {
     await a.mutation(api.content.removeProject,{slug,revision:3,deleteDraft:true});
     expect((await a.query(api.content.drafts,{})).projects).toEqual([]);
   });
+  it('publishes a separate hover image on the project grids and keeps draft replacements private', async()=>{
+    const t=convexTest(schema,modules);
+    const editor=t.withIdentity({subject:'editor-id'});
+    const slug='two-images';
+    const hoverImage='/assets/alternate.webp';
+    const value={...project,hoverImage};
+    await editor.mutation(api.content.saveProject,{slug,value,revision:0,publish:true});
+    await editor.mutation(api.content.saveProject,{slug,value:{...value,hoverImage:''},revision:1,publish:false});
+    for (const route of ['/', '/cases']) {
+      const {projects}=await t.query(api.content.publicPage,{route});
+      expect(projects[0].content).toMatchObject({cover:project.cover,hoverImage});
+    }
+    await expect(editor.mutation(api.content.saveProject,{
+      slug,value:{...value,hoverImage:'/assets/alternate.mp4'},revision:2,publish:false,
+    })).rejects.toThrow('hover reveal');
+    await editor.mutation(api.content.saveProject,{slug,value:{...value,hoverImage:''},revision:2,publish:true});
+    expect((await t.query(api.content.publicPage,{route:'/cases'})).projects[0].content.hoverImage).toBe('');
+  });
 });

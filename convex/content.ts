@@ -34,6 +34,11 @@ const cleanMenu = (items: Infer<typeof menu>) => {
   return items;
 };
 const cleanProject = (value: Infer<typeof project>, publishing: boolean) => {
+  const hoverImage = value.hoverImage ?? "";
+  if (hoverImage.length > 2048 || !imageOK(hoverImage) ||
+      /^https:\/\/res\.cloudinary\.com\/[\w-]+\/video\//.test(hoverImage)) {
+    fail("Choose an image for the hover reveal.");
+  }
   if (!value.title.trim() || value.title.length > 100 || value.category.length > 80 || value.year.length > 15 ||
     value.summary.length > 2400 || value.coverAlt.length > 280 || !imageOK(value.cover) ||
     value.sections.length > 20 || value.sections.some(s => s.title.length > 120 || s.body.length > 12000 ||

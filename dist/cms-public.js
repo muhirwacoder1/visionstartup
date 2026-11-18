@@ -139,6 +139,12 @@
       } else {
         image.removeAttribute('src'); image.removeAttribute('srcset'); image.alt = 'Add a project cover';
       }
+      const hoverImage = visual(content.hoverImage, '');
+      if (hoverImage instanceof HTMLImageElement) {
+        hoverImage.className = 'project-hover-image';
+        hoverImage.setAttribute('aria-hidden', 'true');
+        image.after(hoverImage);
+      }
       const title = card.querySelector('h2,h3,h4');
       if (title) title.textContent = content.title || 'Untitled project';
       else card.setAttribute('aria-label', content.title || 'Untitled project');

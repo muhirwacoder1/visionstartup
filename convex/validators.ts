@@ -6,6 +6,7 @@ export const menu = v.array(menuItem);
 export const project = v.object({
   title: v.string(), category: v.string(), year: v.string(), summary: v.string(),
   cover: v.string(), coverAlt: v.string(), featured: v.boolean(),
+  hoverImage: v.optional(v.string()),
   sections: v.array(v.object({ title: v.string(), body: v.string(), media: v.string(), alt: v.string() })),
 });
 export const media = v.object({
