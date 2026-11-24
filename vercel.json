@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "NIXTIO_HOSTED_BUILD=1 npm run build:cms",
+  "outputDirectory": "dist",
+  "trailingSlash": true,
+  "redirects": [
+    {
+      "source": "/cms/",
+      "destination": "/admin/",
+      "permanent": false
+    }
+  ]
+}

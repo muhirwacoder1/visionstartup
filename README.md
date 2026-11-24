@@ -12,6 +12,14 @@ Run `npm ci` once, then `npm run dev`. Open [the content studio](http://127.0.0.
 - **Site menu:** rename, add, reorder, or hide links. One menu controls both desktop and mobile.
 - **Media:** upload or reuse an image or video. Removing media from a field keeps it in the library. R2 originals are private; Cloudinary delivery URLs are accessible to anyone who has the link.
 
+## Deploy to Vercel
+
+Import `muhirwacoder1/visionstartup` in Vercel. Use the repository root and set **Production Branch** to `master`. The checked-in [Vercel configuration](vercel.json) uses the **Other** framework preset, builds with `npm run build:cms`, and publishes `dist`.
+
+Open `/admin/` on your deployed domain. On Vercel, `/cms` also redirects there. In the Vercel environment for your deployment, set `PUBLIC_CONVEX_URL` and `PUBLIC_CLERK_PUBLISHABLE_KEY`, then redeploy. For a preview on `*.vercel.app`, use the Clerk development key and development Convex deployment. For a production Clerk instance, use a domain you own, a Clerk production publishable key, and the production Convex URL.
+
+If the homepage itself returns 404, open the latest **Ready** deployment directly from Vercel and confirm the intended domain is assigned to it. If the homepage loads and `/admin/` displays a setup message, check the two Vercel environment variables and redeploy.
+
 ## Connect the services
 
 1. **Clerk.** A claimable Clerk development application was created for this checkout. From this project folder, run `npx -y clerk@latest auth login` to claim it into your [Clerk account](https://dashboard.clerk.com/). Enable or confirm [Clerk's Convex integration](https://docs.convex.dev/auth/clerk) so tokens use the `convex` audience. Add your intended editor to the Clerk app and copy their Clerk user ID. If the Clerk instance allows registration, new users still cannot edit without being listed in Convex.
