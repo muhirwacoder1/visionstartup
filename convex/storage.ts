@@ -6,7 +6,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { ConvexError, v, type Infer } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-import { editor } from "./authz";
 import { media } from "./validators";
 
 const TYPES: Record<string,string> = {
@@ -43,7 +42,7 @@ export const begin = action({
   args: { name: v.string(), mime: v.string(), size: v.number() },
   returns: v.object({ url: v.string(), key: v.string() }),
   handler: async (ctx, { name, mime, size }) => {
-    const identity = await editor(ctx.auth);
+    await ctx.runQuery(internal.cmsPermissions.requireEditor, {});
     const ext = TYPES[mime];
     const limit = (mime.startsWith("image/") ? 10 : 50) * 1024 * 1024;
     if (!ext || !Number.isSafeInteger(size) || size < 1 || size > limit) throw new ConvexError("Use a supported image up to 10 MB or video up to 50 MB.");
@@ -53,7 +52,7 @@ export const begin = action({
     const url = await getSignedUrl(client, new PutObjectCommand({ Bucket, Key: staging(key), ContentType: mime, ContentLength: size }), {
       expiresIn: 300, signableHeaders: new Set(["content-type", "content-length"]),
     });
-    await ctx.runMutation(internal.library.start, { key, owner: identity.subject, name: name.slice(0,200), mime, size, expires: Date.now() + 360000 });
+    await ctx.runMutation(internal.library.start, { key, name: name.slice(0,200), mime, size, expires: Date.now() + 360000 });
     return { url, key };
   },
 });
@@ -61,10 +60,10 @@ export const begin = action({
 export const finish = action({
   args: { key: v.string() }, returns: media,
   handler: async (ctx, { key }): Promise<Infer<typeof media>> => {
-    const identity = await editor(ctx.auth);
+    await ctx.runQuery(internal.cmsPermissions.requireEditor, {});
     const { client, Bucket } = r2();
     const { cloud, apiKey, secret } = cloudinary();
-    const { name, mime, size } = await ctx.runMutation(internal.library.claim, { key, owner: identity.subject });
+    const { name, mime, size } = await ctx.runMutation(internal.library.claim, { key });
     const Kind = mime.startsWith("image/") ? "image" : "video";
     let copied = false;
     let delivered = false;

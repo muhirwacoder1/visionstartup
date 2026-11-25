@@ -28,6 +28,7 @@ function Icon({name, size=18}) {
     pages:<><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
     projects:<><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M8 6V4h8v2M3 12h18M10 12v2h4v-2"/></>,
     menu:<path d="M4 6h16M4 12h16M4 18h16"/>,
+    access:<><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></>,
     media:<><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="m5 17 5-5 3 3 3-4 3 4"/></>,
     guide:<><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 1 1 3 3v1M12 16v1"/></>,
     desktop:<><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M9 21h6m-3-4v4"/></>,
@@ -42,10 +43,10 @@ function Brand() { return <div className="brand"><span aria-hidden="true">n<span
 function Gate({title, copy, children}) { return <main className="gate"><Brand/><p className="eyebrow">PRIVATE WORKSPACE</p><h1>{title}</h1><p>{copy}</p>{children}<a className="quiet" href="/">Back to website <Icon name="arrow" size={14}/></a></main>; }
 function Remote() {
   const {isLoading, isAuthenticated} = useConvexAuth();
-  const {isLoaded, isSignedIn} = useAuth();
-  const access = useQuery(ref('content:access'), isAuthenticated ? {} : 'skip');
-  const data = useQuery(ref('content:drafts'), access ? {} : 'skip');
-  const assets = useQuery(ref('library:list'), access ? {} : 'skip');
+  const {isLoaded, isSignedIn, userId} = useAuth();
+  const role = useQuery(ref('cmsPermissions:myRole'), isAuthenticated ? {} : 'skip');
+  const data = useQuery(ref('content:drafts'), role ? {} : 'skip');
+  const assets = useQuery(ref('library:list'), role ? {} : 'skip');
   const page = useMutation(ref('content:savePage'));
   const menu = useMutation(ref('content:saveMenu'));
   const project = useMutation(ref('content:saveProject'));
@@ -53,16 +54,19 @@ function Remote() {
   const begin = useAction(ref('storage:begin'));
   const finish = useAction(ref('storage:finish'));
   const download = useAction(ref('storage:download'));
-  if (!isLoaded || isLoading || (isAuthenticated && access === undefined) || (access && !data)) return <Gate title="Opening the studio…" copy="Checking your sign-in and loading your drafts."/>;
+  if (!isLoaded || isLoading || (isAuthenticated && role === undefined) || (role && !data)) return <Gate title="Opening the studio…" copy="Checking your sign-in and loading your drafts."/>;
   if (!isSignedIn) return <Gate title="Sign in to edit" copy="Use your approved Clerk account to open the content studio."><SignIn routing="hash" forceRedirectUrl="/admin/"/></Gate>;
-  if (!access) return <Gate title="Editor access required" copy="Ask the site owner to grant your Clerk account editor access."><UserButton/></Gate>;
+  if (!role) return <Gate title="Editor access required" copy="Share your CMS account ID with the site owner to request access.">
+    {userId && <label className="field">CMS account ID<input value={userId} readOnly onFocus={event=>event.target.select()}/></label>}
+    <UserButton/>
+  </Gate>;
   const upload = async file => {
     const {url, key} = await begin({name:file.name,mime:file.type,size:file.size});
     const response = await fetch(url, {method:'PUT', headers:{'Content-Type':file.type}, body:file});
     if (!response.ok) throw new Error('The original could not be uploaded to R2. Try again.');
     return await finish({key});
   };
-  return <Studio data={data} assets={assets || []} actions={{page,menu,project,remove,upload,download}} remote/>;
+  return <Studio data={data} assets={assets || []} actions={{page,menu,project,remove,upload,download}} role={role} remote/>;
 }
 function Local() {
   const [data, setData] = useState(getLocal);
@@ -166,10 +170,15 @@ function Preview({path, page, menu, projects, section, focusKey, onNavigate}) {
   </section>;
 }
 
-const tabs = [{id:'pages',label:'Pages',icon:'pages'},{id:'projects',label:'Projects',icon:'projects'},
+const studioTabs = [{id:'pages',label:'Pages',icon:'pages'},{id:'projects',label:'Projects',icon:'projects'},
   {id:'menu',label:'Site menu',icon:'menu'},{id:'media',label:'Media library',icon:'media'},{id:'guide',label:'Editing guide',icon:'guide'}];
-function Studio({data,assets,actions,remote=false}) {
-  const [tab,setTab] = useState('pages');
+function Studio({data,assets,actions,role,remote=false}) {
+  const tabs = role === 'superadmin'
+    ? [...studioTabs,{id:'access',label:'Team access',icon:'access'}]
+    : studioTabs;
+  const [selectedTab,setTab] = useState('pages');
+  const tab = tabs.some(item=>item.id===selectedTab) ? selectedTab : 'pages';
+  const showPreview = ['pages','projects','menu'].includes(tab);
   const [route,setRoute] = useState('/');
   const [section,setSection] = useState('');
   const [search,setSearch] = useState('');
@@ -265,18 +274,18 @@ function Studio({data,assets,actions,remote=false}) {
   return <div className="studio">
     <aside className="sidebar"><Brand/><p className="side-label">WORKSPACE</p><nav aria-label="Studio sections">{tabs.map(t=><button key={t.id} aria-current={tab===t.id?'page':undefined} onClick={()=>chooseTab(t.id)}><Icon name={t.icon}/>{t.label}</button>)}</nav><a className="site-link" href="/" target="_blank" rel="noreferrer">View website <Icon name="arrow" size={15}/></a></aside>
     <main className="work">
-      <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> {tabs.find(t=>t.id===tab).label}</div><div className="inline"><span className={'badge '+(remote?'online':'')}>{remote?'Connected':'Local preview'}</span>{remote && <UserButton/>}</div></header>
+      <header className="topbar"><div className="breadcrumb">Workspace <span>/</span> {tabs.find(t=>t.id===tab).label}</div><div className="inline"><span className={'badge '+(remote?'online':'')}>{remote?(role==='superadmin'?'Super admin':'Editor'):'Local preview'}</span>{remote && <UserButton/>}</div></header>
       <div className="content">
         {!remote && <div className="banner"><strong>Local preview.</strong> Drafts stay in this browser. Publishing and cloud uploads require the connected services.</div>}
         <div className="heading"><div><p className="eyebrow">CONTENT MANAGEMENT</p><h1>{tab==='pages'?'Page content':tabs.find(t=>t.id===tab).label}</h1>
-          <p>{({pages:'Edit copy and media in the site’s existing sections.',projects:'Create case studies and choose which ones to feature.',menu:'Choose the links visitors see, and put them in order.',media:'Reuse images and video from one place.',guide:'A quick guide to previewing and publishing.'})[tab]}</p></div>
+          <p>{({pages:'Edit copy and media in the site’s existing sections.',projects:'Create case studies and choose which ones to feature.',menu:'Choose the links visitors see, and put them in order.',media:'Reuse images and video from one place.',guide:'A quick guide to previewing and publishing.',access:'Grant and revoke CMS editor access.'})[tab]}</p></div>
           {editing && <div className="actions">
             <button className="button" disabled={saving || !dirty} onClick={()=>save(false)}>Save draft</button>
             <button className="button primary" disabled={!remote || saving} onClick={()=>setConfirm('publish')}>Publish</button>
           </div>}
         </div>
         {notice && <div className={'notice '+(notice.error?'error':'')} role={notice.error?'alert':'status'}>{notice.text}<button aria-label="Dismiss message" onClick={()=>setNotice(null)}>×</button></div>}
-        <div className={'layout '+(['media','guide'].includes(tab)?'wide':'')}>
+        <div className={'layout '+(showPreview?'':'wide')}>
           <section className="editor" aria-label={tabs.find(t=>t.id===tab).label}>
             {tab==='pages' && <>
               <div className="panel-top"><label className="field">Page<select value={route} onChange={e=>{setRoute(e.target.value);setSection('');setSearch('');setPreviewPath('');}}>{[...catalog].sort((a,b)=>(a.key==='/'?-1:b.key==='/'?1:a.key.localeCompare(b.key))).map(p=><option key={p.key} value={p.key}>{p.title} {p.key==='/'?'':' · '+p.key}</option>)}</select></label>
@@ -365,10 +374,11 @@ function Studio({data,assets,actions,remote=false}) {
               <h2>Removing content</h2><p>Hide a section or menu link, then publish the change. Unpublish a project to remove it from the site and keep its draft. Delete the draft only when you no longer need it. Removing media from a field keeps the file in the library. Hide reference project cards individually in the Home or Projects page editor.</p>
               <h2>Reference content</h2><p>Replace reference project names, copy, and imagery with your own approved content before sharing the website publicly.</p>
             </div>}
+            {tab==='access' && <TeamAccess notify={notify}/>}
             {editing && <div className="panel-bottom"><span className="badge">{dirty?'Unsaved changes':live && JSON.stringify(live)===JSON.stringify(draft)?'Published':draft?'Draft saved':'Ready to edit'}</span>
               {dirty && tab!=='projects' && <button className="text-button" onClick={reset}>Discard unsaved changes</button>}</div>}
           </section>
-          {!['media','guide'].includes(tab) && <Preview path={activePath} page={previewPage} menu={menuWork || data.menu ? menuEdit : null} projects={previewProjects} section={tab==='pages' && !previewPath ? activeSection?.id : ''} focusKey={focusKey} onNavigate={navigate}/>}
+          {showPreview && <Preview path={activePath} page={previewPage} menu={menuWork || data.menu ? menuEdit : null} projects={previewProjects} section={tab==='pages' && !previewPath ? activeSection?.id : ''} focusKey={focusKey} onNavigate={navigate}/>}
         </div>
       </div>
       {confirm && <div className="modal-backdrop"><section className="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
@@ -377,6 +387,53 @@ function Studio({data,assets,actions,remote=false}) {
         <div className="actions"><button className="button" autoFocus onClick={()=>setConfirm(null)}>Cancel</button><button className="button primary" onClick={()=>{if(confirm==='publish'){setConfirm(null);save(true);}else removeProject(confirm==='delete');}} disabled={saving}>{confirm==='publish'?'Publish':confirm==='delete'?'Delete draft':'Unpublish'}</button></div>
       </section></div>}
     </main>
+  </div>;
+}
+function TeamAccess({notify}) {
+  const editors = useQuery(ref('cmsPermissions:listEditors'), {});
+  const grant = useMutation(ref('cmsPermissions:grantEditor'));
+  const revoke = useMutation(ref('cmsPermissions:revokeEditor'));
+  const [userId,setUserId] = useState('');
+  const [label,setLabel] = useState('');
+  const [pending,setPending] = useState(false);
+
+  async function changeAccess(operation, success) {
+    setPending(true);
+    try {
+      await operation();
+      notify(success);
+    } catch (error) {
+      notify(message(error),true);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return <div className="fields">
+    <h2>Grant editor access</h2>
+    <p className="hint">Ask the person to sign in at /admin/ and share the CMS account ID shown on their screen. Editors can change and publish site content. Only you can manage access.</p>
+    <form className="block access-form" onSubmit={event=>{
+      event.preventDefault();
+      void changeAccess(async()=>{
+        await grant({userId,label});
+        setUserId('');
+        setLabel('');
+      },'Editor access granted.');
+    }}>
+      <label className="field">CMS account ID<input required placeholder="user_…" value={userId} maxLength={110} onChange={event=>setUserId(event.target.value)}/></label>
+      <label className="field">Name (optional)<input maxLength={100} value={label} onChange={event=>setLabel(event.target.value)}/></label>
+      <button className="button primary" type="submit" disabled={pending || !userId.trim()}>Grant editor access</button>
+    </form>
+    <h2>Current access</h2>
+    <div className="block access-row"><strong>You</strong><span className="badge online">Super admin</span></div>
+    {editors === undefined && <p className="hint">Loading editors…</p>}
+    {editors?.length===0 && <p className="hint">No other editors have access.</p>}
+    {editors?.map(({userId:editorId,label:editorName})=><div key={editorId} className="block access-row">
+      <div>{editorName && <strong>{editorName}</strong>}<code>{editorId}</code></div>
+      <button className="button danger" type="button" disabled={pending} onClick={()=>{
+        void changeAccess(()=>revoke({userId:editorId}),'Editor access revoked.');
+      }}>Revoke access</button>
+    </div>)}
   </div>;
 }
 function LibraryUpload(props) {

@@ -9,3 +9,7 @@
 @media(max-width:1150px){.studio{grid-template-columns:182px minmax(0,1fr)}.topbar{padding-inline:20px}.content{padding-inline:20px}.layout{grid-template-columns:minmax(245px,335px) minmax(0,1fr);gap:12px}}
 @media(max-width:850px){.studio{grid-template-columns:minmax(0,1fr)}.sidebar{min-width:0;height:auto;position:static;display:block;padding:12px 14px}.sidebar .brand{margin-bottom:12px}.side-label,.site-link{display:none}.sidebar nav{display:flex;gap:5px;overflow:auto}.sidebar nav button{padding:8px;font-size:12px}.sidebar nav button svg{width:15px;height:15px}.topbar{height:48px}.preview{top:8px}}
 @media(max-width:620px){.topbar,.content{padding-inline:12px}.heading{align-items:flex-start;flex-direction:column}.layout{display:flex;flex-direction:column}.editor,.preview{width:100%}.preview{order:-1;position:static}.preview-area{max-height:390px;overflow:auto;justify-content:center}.viewport{flex:none}.panel-top,.fields{padding:13px}.panel-bottom{flex-wrap:wrap}}
+.access-form{max-width:560px}
+.access-form button{justify-self:start}
+.access-row{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:560px;flex-wrap:wrap}
+.access-row strong,.access-row code{display:block;overflow-wrap:anywhere}

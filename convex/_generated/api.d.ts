@@ -9,6 +9,7 @@
  */
 
 import type * as authz from "../authz.js";
+import type * as cmsPermissions from "../cmsPermissions.js";
 import type * as content from "../content.js";
 import type * as library from "../library.js";
 import type * as storage from "../storage.js";
@@ -22,6 +23,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   authz: typeof authz;
+  cmsPermissions: typeof cmsPermissions;
   content: typeof content;
   library: typeof library;
   storage: typeof storage;

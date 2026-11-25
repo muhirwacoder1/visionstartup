@@ -1,6 +1,6 @@
 import { ConvexError, v, type Infer } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { editor } from "./authz";
+import { cmsAccess, editor } from "./authz";
 import { page, menu, project } from "./validators";
 import manifest from "./fields.json";
 
@@ -50,7 +50,7 @@ const cleanProject = (value: Infer<typeof project>, publishing: boolean) => {
 };
 
 export const access = query({ args: {}, returns: v.boolean(), handler: async ctx => {
-  try { await editor(ctx.auth); return true; } catch { return false; }
+  return (await cmsAccess(ctx)).role !== null;
 }});
 export const publicPage = query({
   args: { route: v.string(), slug: v.optional(v.string()) },
@@ -74,7 +74,7 @@ export const drafts = query({
     projects: v.array(v.object({ slug: v.string(), draft: project, live: v.union(project, v.null()), revision: v.number() })),
   }),
   handler: async ctx => {
-    await editor(ctx.auth);
+    await editor(ctx);
     const p = await ctx.db.query("pages").take(32);
     const m = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "menu")).unique();
     const j = await ctx.db.query("projects").take(100);
@@ -88,7 +88,7 @@ export const drafts = query({
 export const savePage = mutation({
   args: { route: v.string(), value: page, revision: v.number(), publish: v.boolean() }, returns: v.number(),
   handler: async (ctx, { route, value, revision, publish }) => {
-    await editor(ctx.auth);
+    await editor(ctx);
     const draft = cleanPage(route, value);
     const row = await ctx.db.query("pages").withIndex("by_route", q => q.eq("route", route)).unique();
     checkRevision(row?.revision ?? 0, revision);
@@ -100,7 +100,7 @@ export const savePage = mutation({
 export const saveMenu = mutation({
   args: { value: menu, revision: v.number(), publish: v.boolean() }, returns: v.number(),
   handler: async (ctx, { value, revision, publish }) => {
-    await editor(ctx.auth);
+    await editor(ctx);
     const draft = cleanMenu(value);
     const row = await ctx.db.query("settings").withIndex("by_key", q => q.eq("key", "menu")).unique();
     checkRevision(row?.revision ?? 0, revision);
@@ -112,7 +112,7 @@ export const saveMenu = mutation({
 export const saveProject = mutation({
   args: { slug: v.string(), value: project, revision: v.number(), publish: v.boolean() }, returns: v.number(),
   handler: async (ctx, { slug, value, revision, publish }) => {
-    await editor(ctx.auth);
+    await editor(ctx);
     if (!slugOK(slug)) fail("Use lowercase letters, numbers, and hyphens in the project URL.");
     const draft = cleanProject(value, publish);
     const row = await ctx.db.query("projects").withIndex("by_slug", q => q.eq("slug", slug)).unique();
@@ -126,7 +126,7 @@ export const saveProject = mutation({
 export const removeProject = mutation({
   args: { slug: v.string(), revision: v.number(), deleteDraft: v.boolean() }, returns: v.null(),
   handler: async (ctx, { slug, revision, deleteDraft }) => {
-    await editor(ctx.auth);
+    await editor(ctx);
     const row = await ctx.db.query("projects").withIndex("by_slug", q => q.eq("slug", slug)).unique();
     if (!row) return null;
     checkRevision(row.revision, revision);
